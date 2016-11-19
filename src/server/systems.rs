@@ -2,13 +2,27 @@
 
 use tinyecs::*;
 
-use std::net::{TcpListener, TcpStream};
-use std::io::{BufReader, BufWriter};
+use std::net::TcpStream;
+use std::io::{BufWriter, BufReader};
 use std::io::prelude::*;
-use std::slice;
-use std::mem;
+
+
+use bincode::SizeLimit;
+use bincode::rustc_serialize::{encode, decode};
 
 use SERVER_IP;
+
+#[derive(RustcEncodable, RustcDecodable, PartialEq)]
+struct MonsterExport {
+    id: u64,
+    x: f32,
+    y: f32,
+}
+
+#[derive(RustcEncodable, RustcDecodable, PartialEq)]
+struct MonsterArray {
+    entities: Vec<MonsterExport>
+}
 
 
 pub struct ServerClass;
@@ -18,7 +32,7 @@ impl Component for ServerClass {}
 
 /// Система по обработке сети.
 pub struct ServerSystem {
-    server_data: Server,
+    _server_data: Server,
 }
 
 impl ServerSystem {
@@ -26,34 +40,17 @@ impl ServerSystem {
         let hostname: &str = SERVER_IP;
         let port: &str = "6658";
         let address = format!("{}:{}", hostname, port);
+
         let stream = TcpStream::connect(&*address).unwrap();
+        info!("Монстер-сервер запущен. Подключен к главному серверу.");
+        println!("Монстер-сервер запущен. Подключен к главному серверу.");
 
-//        if let Some(ref data) = stream {
-//            info!("Монстер-сервер запущен. Подключен к главному серверу.");
-//            println!("Монстер-сервер запущен. Подключен к главному серверу.");
-//        }
-
-//        let stream = match TcpStream::connect(&*address) {
-//            Ok(data) => {
-//                info!("Монстер-сервер запущен. Подключен к главному серверу.");
-//                println!("Монстер-сервер запущен. Подключен к главному серверу.");
-//                data
-//            },
-//            Err(e) => {
-//                println!("Монстер-сервер. Ошибка открытия порта: {}", e);
-//                None
-//            },
-//        };
-
-
-
-        let mut server = Server {
-            stream: BufReader::new(stream),
-            writer: BufWriter::new(stream),
+        let server = Server {
+            _stream: stream,
         };
 
         ServerSystem {
-            server_data: server,
+            _server_data: server,
         }
     }
 }
@@ -65,37 +62,37 @@ impl System for ServerSystem {
     }
 
     fn process_all(&mut self, entities: &mut Vec<&mut Entity>, _world: &mut WorldHandle, _data: &mut DataList) {
-
+        for _entity in entities {}
     }
 }
 
 /// сервер
 pub struct Server {
-    reader: BufReader<TcpStream>,
-    writer: BufWriter<TcpStream>,
+    _stream: TcpStream,
 }
 
 impl Server {
-    pub fn send_data(&mut self, data: &str) {
-        let size_dat = data.len();
+    fn _write(&mut self) {
+        //        let world = World {
+        //            entities: vec![Entity { x: 0.0, y: 4.0 }, Entity { x: 10.0, y: 20.5 }]
+        //        };
 
-        //превращаем размер в байты
-        let size: usize = size_dat;
-        let const_size: *const usize = &size;
-        let bp: *const u8 = const_size as *const _;
-        let bs: &[u8] = unsafe {
-            slice::from_raw_parts(
-                bp,
-                mem::size_of::<usize>()
-            )
+        // @AlexNav73 - спс за ссылку и помощь в освоении этой сериализации!
+        let monster_export = MonsterExport {
+            id: 0, x: 50f32, y: 50f32,
         };
+        let encoded: Vec<u8> = encode(&monster_export, SizeLimit::Infinite).unwrap();
 
-        println!("Размер данных answer {}", data.len());
-        println!("Содержимое size_dat {}", size_dat);
-        println!("Размер байтмассива bs {}", bs.len()); //8
+        let mut writer = BufWriter::new(&self._stream);
+        let _ = writer.write(&encoded);
+        writer.flush().unwrap();      // <------------ добавили проталкивание буферизованных данных в поток
+    }
 
-        let _ = self.writer.write(bs);   // шлем 8 байт размер данных.
-        let _ = self.writer.write(data.as_bytes());
-        self.writer.flush().unwrap();      // <------------ добавили проталкивание буферизованных данных в поток
+    fn _read(&mut self) -> MonsterExport {
+        let mut buf = vec![];
+        let mut reader = BufReader::new(&self._stream);
+        reader.read(&mut buf).unwrap();
+
+        decode(&buf[..]).unwrap()
     }
 }
