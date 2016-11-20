@@ -32,7 +32,7 @@ impl Component for ServerClass {}
 
 /// Система по обработке сети.
 pub struct ServerSystem {
-    _server_data: Server,
+    server_data: Server,
 }
 
 impl ServerSystem {
@@ -46,11 +46,11 @@ impl ServerSystem {
         println!("Монстер-сервер запущен. Подключен к главному серверу.");
 
         let server = Server {
-            _stream: stream,
+            stream: stream,
         };
 
         ServerSystem {
-            _server_data: server,
+            server_data: server,
         }
     }
 }
@@ -62,17 +62,22 @@ impl System for ServerSystem {
     }
 
     fn process_all(&mut self, entities: &mut Vec<&mut Entity>, _world: &mut WorldHandle, _data: &mut DataList) {
-        for _entity in entities {}
+        self.server_data.write();
+        println!("Послали монстра");
+        for entity in entities {
+            entity.remove_component::<ServerClass>();
+            entity.refresh();
+        }
     }
 }
 
 /// сервер
 pub struct Server {
-    _stream: TcpStream,
+    stream: TcpStream,
 }
 
 impl Server {
-    fn _write(&mut self) {
+    fn write(&mut self) {
         //        let world = World {
         //            entities: vec![Entity { x: 0.0, y: 4.0 }, Entity { x: 10.0, y: 20.5 }]
         //        };
@@ -83,14 +88,14 @@ impl Server {
         };
         let encoded: Vec<u8> = encode(&monster_export, SizeLimit::Infinite).unwrap();
 
-        let mut writer = BufWriter::new(&self._stream);
+        let mut writer = BufWriter::new(&self.stream);
         let _ = writer.write(&encoded);
         writer.flush().unwrap();      // <------------ добавили проталкивание буферизованных данных в поток
     }
 
     fn _read(&mut self) -> MonsterExport {
         let mut buf = vec![];
-        let mut reader = BufReader::new(&self._stream);
+        let mut reader = BufReader::new(&self.stream);
         reader.read(&mut buf).unwrap();
 
         decode(&buf[..]).unwrap()
