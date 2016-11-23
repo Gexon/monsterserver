@@ -45,8 +45,7 @@ impl System for SpawnSystem {
                 entity_object.add_component(Name { name: spawn_point.name.to_string() });
                 entity_object.add_component(Position { x: spawn_point.x, y: spawn_point.y });
                 entity_object.add_component(MonsterClass);
-                //entity_object.add_component(Growth);
-                //entity_object.add_component(Replication); // требуется репликация.
+                entity_object.add_component(Modified); // произошли изменения монстра.
                 entity_object.add_component(MonsterId { id: last_id.monster_id });
                 entity_object.refresh();
                 let monster_id = entity_object.get_component::<MonsterId>();

@@ -9,14 +9,20 @@ use std::str;
 
 use byteorder::{ByteOrder, BigEndian};
 
-use bincode::SizeLimit;
+use bincode::SizeLimit; // @AlexNav73 - спс за ссылку и помощь в освоении этой сериализации!
 use bincode::rustc_serialize::{encode, decode};
 
 use SERVER_IP;
 
+
+use ::manager::components::Position;
+use ::manager::components::Modified;
+use ::monster::components::MonsterId;
+
+
 #[derive(RustcEncodable, RustcDecodable, PartialEq)]
 struct MonsterExport {
-    id: u64,
+    id: i64,
     x: f32,
     y: f32,
 }
@@ -60,15 +66,26 @@ impl ServerSystem {
 // работа с сетью. обмен данными с главным сервером.
 impl System for ServerSystem {
     fn aspect(&self) -> Aspect {
-        aspect_all!(ServerClass)
+        aspect_all!(Modified)
     }
 
     fn process_all(&mut self, entities: &mut Vec<&mut Entity>, _world: &mut WorldHandle, _data: &mut DataList) {
-        for _entity in entities {
-            self.server_data.write();
+        for entity in entities {
+            let monster_id = entity.get_component::<MonsterId>();
+            let position = entity.get_component::<Position>();
+
+            // создаем передаваюмую структуру с монстром.
+            let monster_export = MonsterExport {
+                id: monster_id.id, x: position.x, y: position.y,
+            };
+            let monster_array = MonsterArray {
+                entities: vec![monster_export]
+            };
+
+            self.server_data.write(monster_array);
             println!("Послали монстра");
-            //entity.remove_component::<ServerClass>();
-            //entity.refresh();
+            entity.remove_component::<ServerClass>();
+            entity.refresh();
         }
     }
 }
@@ -79,20 +96,7 @@ pub struct Server {
 }
 
 impl Server {
-    fn write(&mut self) {
-        // @AlexNav73 - спс за ссылку и помощь в освоении этой сериализации!
-        let monster_export = MonsterExport {
-            id: 0, x: 50f32, y: 50f32,
-        };
-
-        let monster_export2 = MonsterExport {
-            id: 1, x: 51f32, y: 50f32,
-        };
-
-        let monster_array = MonsterArray {
-            entities: vec![monster_export, monster_export2]
-        };
-
+    fn write(&mut self, monster_array: MonsterArray) {
         let encoded: Vec<u8> = encode(&monster_array, SizeLimit::Infinite).unwrap();
 
         let len = encoded.len();

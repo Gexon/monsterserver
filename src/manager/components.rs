@@ -50,3 +50,8 @@ pub struct WorldLastId {
 }
 
 impl Component for WorldLastId {}
+
+
+/// метка модификации
+pub struct Modified;
+impl Component for Modified{}
