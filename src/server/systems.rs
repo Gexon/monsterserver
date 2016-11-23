@@ -43,7 +43,7 @@ impl ServerSystem {
         let port: &str = "6658";
         let address = format!("{}:{}", hostname, port);
 
-        let stream = TcpStream::connect(&*address).unwrap();
+        let stream = TcpStream::connect(&*address).expect("Ошибка подключения к основному серверу.");
         info!("Монстер-сервер запущен. Подключен к главному серверу.");
         println!("Монстер-сервер запущен. Подключен к главному серверу.");
 
@@ -64,11 +64,11 @@ impl System for ServerSystem {
     }
 
     fn process_all(&mut self, entities: &mut Vec<&mut Entity>, _world: &mut WorldHandle, _data: &mut DataList) {
-        self.server_data.write();
-        println!("Послали монстра");
         for entity in entities {
-            entity.remove_component::<ServerClass>();
-            entity.refresh();
+            self.server_data.write();
+            println!("Послали монстра");
+            //entity.remove_component::<ServerClass>();
+            //entity.refresh();
         }
     }
 }
@@ -80,15 +80,20 @@ pub struct Server {
 
 impl Server {
     fn write(&mut self) {
-        //        let world = World {
-        //            entities: vec![Entity { x: 0.0, y: 4.0 }, Entity { x: 10.0, y: 20.5 }]
-        //        };
-
         // @AlexNav73 - спс за ссылку и помощь в освоении этой сериализации!
         let monster_export = MonsterExport {
             id: 0, x: 50f32, y: 50f32,
         };
-        let encoded: Vec<u8> = encode(&monster_export, SizeLimit::Infinite).unwrap();
+
+        let monster_export2 = MonsterExport {
+            id: 1, x: 51f32, y: 50f32,
+        };
+
+        let monster_array = MonsterArray {
+            entities: vec![monster_export, monster_export2]
+        };
+
+        let encoded: Vec<u8> = encode(&monster_array, SizeLimit::Infinite).unwrap();
 
         let len = encoded.len();
         let mut send_buf = [0u8; 8];
@@ -98,9 +103,14 @@ impl Server {
         let _ = writer.write(&send_buf);
         let _ = writer.write(&encoded);
         writer.flush().unwrap();      // <------------ добавили проталкивание буферизованных данных в поток
+        println!("Длина отправленных данных {}", len);
+        let s = str::from_utf8(&send_buf[..]).unwrap();
+        println!("Содержимое сообщения о длине отправленных данных:{:?}", s);
+        let s = str::from_utf8(&encoded[..]).unwrap();
+        println!("Содержимое отправленных данных:{:?}", s);
     }
 
-    fn _read(&mut self) -> MonsterExport {
+    fn read(&mut self) -> MonsterExport {
         // создаем читателя
         let mut reader = BufReader::new(&self.stream);
         // готовим вектор для примема размера входящих данных

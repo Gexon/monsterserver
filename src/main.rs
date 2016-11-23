@@ -13,9 +13,10 @@ extern crate rustc_serialize;
 use tinyecs::*;
 
 
-mod server;
-mod monster;
 mod utility;
+mod server;
+mod manager;
+mod monster;
 
 
 const  SERVER_IP: &'static str = "192.168.0.131";
