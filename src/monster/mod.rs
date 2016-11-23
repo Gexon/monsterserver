@@ -2,24 +2,25 @@
 
 use tinyecs::*;
 
-use ::utility::map::Map;
-use ::utility::map::Size;
-use ::monster::components::*;
-
+use ::manager::components::SpawnPoint;
 pub mod components;
 pub mod systems;
 
+
+/// инициализация. создаем первого монстра.
 pub fn init(monster_world: &mut World) {
-    // добавляем в мир систему спавна.
-    //monster_world.set_system(SpawnSystem);
+    // добавляем в мир систему роста растений.
+    //dk_world.set_system(PlantGrowthSystem);
 
-    {
-        // вносим в этот мир немного земли
+    for count in 0..1 {
+        // поручаем спавнеру, засумонить в наш мир первого монстра!
+        // создаем спавнер
         let mut entity_manager = monster_world.entity_manager();
-        let entity = entity_manager.create_entity();
+        let entity_spawner = entity_manager.create_entity();
 
-        entity.add_component(MonsterClass);
-        entity.add_component(ViewMap { flora: Map::new_empty(Size(140, 140), 0u8, 0u8) });
-        entity.refresh();
+        let delta: f32 = count as f32;
+        entity_spawner.add_component(SpawnPoint { name: "monster", x: 20f32 + delta, y: 20f32 + delta });
+        entity_spawner.refresh();
+        break;
     }
 }

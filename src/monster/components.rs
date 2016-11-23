@@ -5,21 +5,44 @@ use tinyecs::*;
 use ::utility::map::Map;
 
 
-// метка принадлежности к классу монстров.
+/// метка принадлежности к классу монстров.
 pub struct MonsterClass;
 
 impl Component for MonsterClass {}
 
-pub struct Position {
-    pub x: f32,
-    pub y: f32,
+
+/// имя монстра
+pub struct Name {
+    pub name: String
 }
 
-impl Component for Position {}
+impl Component for Name {}
 
-// тут будем хранить все объекты на карте.
-pub struct ViewMap {
-    pub flora: Map<u8>,
+
+/// уникальный номер монстра
+pub struct MonsterId {
+    pub id: i64,
 }
 
-impl Component for ViewMap {}
+impl Component for MonsterId {}
+
+
+/// характеристики монстра и его текущее состояние
+pub struct _MonsterState {
+    //pub state: i32,
+    //pub growth_time: PreciseTime,
+    //pub reproduction_time: PreciseTime,
+    //pub dead: i32,
+}
+
+impl Component for _MonsterState {}
+
+
+/// тут будем хранить все объекты на карте.
+pub struct _MonsterMaps {
+    pub view_map: Map<u8>,
+    pub foods_map: Map<u8>,
+    pub waters_map: Map<u8>,
+}
+
+impl Component for _MonsterMaps {}

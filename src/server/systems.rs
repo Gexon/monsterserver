@@ -64,7 +64,7 @@ impl System for ServerSystem {
     }
 
     fn process_all(&mut self, entities: &mut Vec<&mut Entity>, _world: &mut WorldHandle, _data: &mut DataList) {
-        for entity in entities {
+        for _entity in entities {
             self.server_data.write();
             println!("Послали монстра");
             //entity.remove_component::<ServerClass>();
@@ -110,7 +110,7 @@ impl Server {
         println!("Содержимое отправленных данных:{:?}", s);
     }
 
-    fn read(&mut self) -> MonsterExport {
+    fn _read(&mut self) -> MonsterExport {
         // создаем читателя
         let mut reader = BufReader::new(&self.stream);
         // готовим вектор для примема размера входящих данных
