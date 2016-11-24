@@ -84,7 +84,7 @@ impl System for ServerSystem {
 
             self.server_data.write(monster_array);
             println!("Послали монстра");
-            entity.remove_component::<ServerClass>();
+            entity.remove_component::<Modified>();
             entity.refresh();
         }
     }
@@ -108,10 +108,6 @@ impl Server {
         let _ = writer.write(&encoded);
         writer.flush().unwrap();      // <------------ добавили проталкивание буферизованных данных в поток
         println!("Длина отправленных данных {}", len);
-        let s = str::from_utf8(&send_buf[..]).unwrap();
-        println!("Содержимое сообщения о длине отправленных данных:{:?}", s);
-        let s = str::from_utf8(&encoded[..]).unwrap();
-        println!("Содержимое отправленных данных:{:?}", s);
     }
 
     fn _read(&mut self) -> MonsterExport {
