@@ -19,7 +19,7 @@ use ::manager::components::Position;
 use ::manager::components::Modified;
 use ::monster::components::MonsterId;
 
-
+// шлем отсюда
 #[derive(RustcEncodable, RustcDecodable, PartialEq)]
 struct MonsterExport {
     id: i64,
@@ -27,9 +27,23 @@ struct MonsterExport {
     y: f32,
 }
 
+// принимаем сюда
 #[derive(RustcEncodable, RustcDecodable, PartialEq)]
-struct MonsterArray {
+struct MonsterImport {
+    id: u64,
+    damage: u64,
+}
+
+// массив отправляемых данных
+#[derive(RustcEncodable, RustcDecodable, PartialEq)]
+struct MonsterArrayExport {
     entities: Vec<MonsterExport>
+}
+
+// массив принимаемых данных
+#[derive(RustcEncodable, RustcDecodable, PartialEq)]
+struct MonsterArrayImport {
+    entities: Vec<MonsterImport>
 }
 
 
@@ -78,12 +92,26 @@ impl System for ServerSystem {
             let monster_export = MonsterExport {
                 id: monster_id.id, x: position.x, y: position.y,
             };
-            let monster_array = MonsterArray {
+            let _monster_array = MonsterArrayExport {
                 entities: vec![monster_export]
             };
 
-            self.server_data.write(monster_array);
-            println!("Послали монстра {}", monster_id.id);
+            // Шлем на основной сервер данные.
+            //self.server_data._write(monster_array);
+            //println!("Послали монстра {}", monster_id.id);
+
+            // Принимаем с основного сервера данные.
+            let monster_array_import = self.server_data.read();
+            // обрабатываем полученные данные
+            if !monster_array_import.entities.is_empty() {
+                let monster_entities = monster_array_import.entities;
+                for monster in monster_entities {
+                    let in_monster: MonsterImport = monster;
+                    println!("Приняли монстра id {}, damage {}", in_monster.id, in_monster.damage);
+                }
+            } else { println!("От Монстра-сервера пришли пустые данные."); }
+
+
             entity.remove_component::<Modified>();
             entity.refresh();
         }
@@ -96,7 +124,7 @@ pub struct Server {
 }
 
 impl Server {
-    fn write(&mut self, monster_array: MonsterArray) {
+    fn _write(&mut self, monster_array: MonsterArrayExport) {
         let encoded: Vec<u8> = encode(&monster_array, SizeLimit::Infinite).unwrap();
 
         let len = encoded.len();
@@ -110,7 +138,8 @@ impl Server {
         println!("Длина отправленных данных {}", len);
     }
 
-    fn _read(&mut self) -> MonsterExport {
+    fn read(&mut self) -> MonsterArrayImport {
+        println!("fn read");
         // создаем читателя
         let mut reader = BufReader::new(&self.stream);
         // готовим вектор для примема размера входящих данных
@@ -126,6 +155,7 @@ impl Server {
                 0
             }
         };
+        println!("end read");
         if bytes < 8 {
             warn!("Ошибка. Сообщение о длине входящих данных меньше 8 байт и равно: {} bytes", bytes);
             println!("Ошибка. Сообщение о длине входящих данных меньше 8 байт и равно: {} bytes", bytes);
@@ -141,7 +171,7 @@ impl Server {
         //let stream_ref = <TcpStream as Read>::by_ref(&self.stream);
         //match self.stream.take(msg_len as u64).read(&mut recv_buf) {
         // прием данных
-        match reader.read(&mut buf_len) {
+        match reader.read(&mut recv_buf) {
             Ok(n) => {
                 debug!("CONN : считано {} байт", n);
                 println!("CONN : считано {} байт", n);
