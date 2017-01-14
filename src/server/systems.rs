@@ -83,7 +83,7 @@ impl System for ServerSystem {
             };
 
             self.server_data.write(monster_array);
-            println!("Послали монстра");
+            println!("Послали монстра {}", monster_id.id);
             entity.remove_component::<Modified>();
             entity.refresh();
         }
