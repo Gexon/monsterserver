@@ -197,7 +197,7 @@ impl Server {
         unsafe { recv_buf.set_len(msg_len); }
         //let stream_ref = <TcpStream as Read>::by_ref(&self.stream);
         //match self.stream.take(msg_len as u64).read(&mut recv_buf) {
-        // прием данных
+        // прием данных.
         match reader.read(&mut recv_buf) {
             Ok(n) => {
                 //debug!("CONN : считано {} байт", n);
