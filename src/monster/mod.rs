@@ -9,8 +9,6 @@ pub mod systems;
 
 /// инициализация. создаем первого монстра.
 pub fn init(monster_world: &mut World) {
-    // добавляем в мир систему роста растений.
-    //dk_world.set_system(PlantGrowthSystem);
 
     for count in 0..10 {
         // поручаем спавнеру, засумонить в наш мир первого монстра!

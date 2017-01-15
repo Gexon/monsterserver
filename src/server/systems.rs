@@ -18,10 +18,12 @@ use SERVER_IP;
 use ::manager::components::Position;
 use ::manager::components::Modified;
 use ::monster::components::MonsterId;
+use ::monster::components::MonsterClass;
 
 // шлем отсюда
 #[derive(RustcEncodable, RustcDecodable, PartialEq)]
 struct MonsterExport {
+    p_type: u8,
     id: i64,
     x: f32,
     y: f32,
@@ -30,6 +32,7 @@ struct MonsterExport {
 // принимаем сюда
 #[derive(RustcEncodable, RustcDecodable, PartialEq)]
 struct MonsterImport {
+    p_type: u8,
     id: u64,
     damage: u64,
 }
@@ -78,42 +81,68 @@ impl ServerSystem {
 }
 
 // работа с сетью. обмен данными с главным сервером.
+
+
 impl System for ServerSystem {
     fn aspect(&self) -> Aspect {
-        aspect_all!(Modified)
+        aspect_all!(ServerClass)
     }
 
-    fn process_all(&mut self, entities: &mut Vec<&mut Entity>, _world: &mut WorldHandle, _data: &mut DataList) {
-        for entity in entities {
-            let monster_id = entity.get_component::<MonsterId>();
-            let position = entity.get_component::<Position>();
+    // получение разных аспектов
+    fn data_aspects(&self) -> Vec<Aspect> {
+        vec![aspect_all![MonsterClass]]
+    }
 
-            // создаем передаваюмую структуру с монстром.
-            let monster_export = MonsterExport {
-                id: monster_id.id, x: position.x, y: position.y,
-            };
-            let _monster_array = MonsterArrayExport {
-                entities: vec![monster_export]
-            };
-
-            // Шлем на основной сервер данные.
-            //self.server_data._write(monster_array);
-            //println!("Послали монстра {}", monster_id.id);
-
-            // Принимаем с основного сервера данные.
-            let monster_array_import = self.server_data.read();
-            // обрабатываем полученные данные
-            if !monster_array_import.entities.is_empty() {
-                let monster_entities = monster_array_import.entities;
-                for monster in monster_entities {
-                    let in_monster: MonsterImport = monster;
+    fn process_all(&mut self, _entities: &mut Vec<&mut Entity>, _world: &mut WorldHandle, data: &mut DataList) {
+        // Принимаем с основного сервера данные.
+        let monster_array_import = self.server_data.read();
+        // обрабатываем полученные данные
+        if !monster_array_import.entities.is_empty() {
+            let monster_entities = monster_array_import.entities;
+            for monster in monster_entities {
+                let in_monster: MonsterImport = monster;
+                if in_monster.p_type == 0 {
+                    println!("Приняли idle"); //TODO переделать, иначе будет работать со скоростью основного сервера.
+                } else {
                     println!("Приняли монстра id {}, damage {}", in_monster.id, in_monster.damage);
                 }
-            } else { println!("От Монстра-сервера пришли пустые данные."); }
+            }
+        } else { println!("От Монстра-сервера пришли пустые данные."); }
 
+        let mut send_monsters: bool = false;
+        let monsters = data.unwrap_all();
+        for monster in monsters {
+            if monster.has_component::<Modified>() {
+                let monster_id = monster.get_component::<MonsterId>();
+                let position = monster.get_component::<Position>();
 
-            entity.remove_component::<Modified>();
-            entity.refresh();
+                // создаем передаваюмую структуру с монстром.
+                let monster_export = MonsterExport {
+                    p_type: 1, id: monster_id.id, x: position.x, y: position.y,
+                };
+                let monster_array = MonsterArrayExport {
+                    entities: vec![monster_export]
+                };
+                // Шлем на основной сервер данные.
+                self.server_data.write(monster_array);
+                send_monsters = true;
+                println!("Послали монстра {}", monster_id.id);
+
+                monster.remove_component::<Modified>();
+                monster.refresh();
+            }
+        }
+        if !send_monsters {
+            // создаем передаваюмую структуру с монстром.
+            let monster_export = MonsterExport {
+                p_type: 0, id: 0, x: 0f32, y: 0f32,
+            };
+            let monster_array = MonsterArrayExport {
+                entities: vec![monster_export]
+            };
+            // Шлем на основной сервер данные.
+            self.server_data.write(monster_array);
+            println!("Послали idle");
         }
     }
 }
@@ -124,7 +153,7 @@ pub struct Server {
 }
 
 impl Server {
-    fn _write(&mut self, monster_array: MonsterArrayExport) {
+    fn write(&mut self, monster_array: MonsterArrayExport) {
         let encoded: Vec<u8> = encode(&monster_array, SizeLimit::Infinite).unwrap();
 
         let len = encoded.len();
@@ -135,11 +164,10 @@ impl Server {
         let _ = writer.write(&send_buf);
         let _ = writer.write(&encoded);
         writer.flush().unwrap();      // <------------ добавили проталкивание буферизованных данных в поток
-        println!("Длина отправленных данных {}", len);
+        //println!("Длина отправленных данных {}", len);
     }
 
     fn read(&mut self) -> MonsterArrayImport {
-        println!("fn read");
         // создаем читателя
         let mut reader = BufReader::new(&self.stream);
         // готовим вектор для примема размера входящих данных
@@ -147,15 +175,14 @@ impl Server {
         // принимаем данные
         let bytes = match reader.read(&mut buf_len) {
             Ok(n) => {
-                let s = str::from_utf8(&buf_len[..]).unwrap();
-                println!("Содержимое сообщения о длине входящих данных:{}, количество считанных байт:{}", s, n);
+                //let s = str::from_utf8(&buf_len[..]).unwrap();
+                //println!("Содержимое сообщения о длине входящих данных:{}, количество считанных байт:{}", s, n);
                 n
             },
             Err(_) => {
                 0
             }
         };
-        println!("end read");
         if bytes < 8 {
             warn!("Ошибка. Сообщение о длине входящих данных меньше 8 байт и равно: {} bytes", bytes);
             println!("Ошибка. Сообщение о длине входящих данных меньше 8 байт и равно: {} bytes", bytes);
@@ -163,8 +190,8 @@ impl Server {
         // превращаем в нормальный вид длину входящих данных.
         let msg_len = BigEndian::read_u64(buf_len.as_ref());
         let msg_len = msg_len as usize;
-        debug!("Ожидаемая длина сообщения {}", msg_len);
-        println!("Ожидаемая длина сообщения {}", msg_len);
+        //debug!("Ожидаемая длина сообщения {}", msg_len);
+        //println!("Ожидаемая длина сообщения {}", msg_len);
         // подготавливаем вектор для принимаемых данных.
         let mut recv_buf: Vec<u8> = Vec::with_capacity(msg_len);
         unsafe { recv_buf.set_len(msg_len); }
@@ -173,8 +200,8 @@ impl Server {
         // прием данных
         match reader.read(&mut recv_buf) {
             Ok(n) => {
-                debug!("CONN : считано {} байт", n);
-                println!("CONN : считано {} байт", n);
+                //debug!("CONN : считано {} байт", n);
+                //println!("CONN : считано {} байт", n);
                 if n < msg_len as usize {
                     println!("Не осилил достаточно байт");
                 }
