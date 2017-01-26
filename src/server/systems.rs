@@ -90,8 +90,9 @@ impl System for ServerSystem {
 
     // получение разных аспектов
     fn data_aspects(&self) -> Vec<Aspect> {
-        vec![aspect_all![MonsterClass]]
+        vec![aspect_all![MonsterClass].optional()]
     }
+    //aspect_all![ClassGround].optional() - будет срабатывать даже если нет аспектов в дате.
 
     fn process_all(&mut self, _entities: &mut Vec<&mut Entity>, _world: &mut WorldHandle, data: &mut DataList) {
         // Принимаем с основного сервера данные.
@@ -102,7 +103,7 @@ impl System for ServerSystem {
             for monster in monster_entities {
                 let in_monster: MonsterImport = monster;
                 if in_monster.p_type == 0 {
-                    println!("Приняли idle"); //TODO переделать, иначе будет работать со скоростью основного сервера.
+                    //println!("Приняли idle"); //TODO переделать, иначе будет работать со скоростью основного сервера.
                 } else {
                     println!("Приняли монстра id {}, damage {}", in_monster.id, in_monster.damage);
                 }
@@ -142,7 +143,7 @@ impl System for ServerSystem {
             };
             // Шлем на основной сервер данные.
             self.server_data.write(monster_array);
-            println!("Послали idle");
+            //println!("Послали idle");
         }
     }
 }
