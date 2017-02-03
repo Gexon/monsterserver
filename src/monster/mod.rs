@@ -3,12 +3,17 @@
 use tinyecs::*;
 
 use ::manager::components::SpawnPoint;
+use ::monster::components::SelectionTree;
+use ::monster::systems::SelectorSystem;
+
 pub mod components;
 pub mod systems;
 
-
+// todo (Генетические алгоритмы) передача кода behaviour tree потомкам монстра.
+// todo запилить мутации кода behaviour tree, либо скрещивания как у пчел с майнкрафта.
 /// инициализация. создаем первого монстра.
 pub fn init(monster_world: &mut World) {
+    monster_world.set_system(SelectorSystem);
 
     for count in 0..10 {
         // поручаем спавнеру, засумонить в наш мир первого монстра!
@@ -18,6 +23,9 @@ pub fn init(monster_world: &mut World) {
 
         let delta: f32 = count as f32;
         entity_spawner.add_component(SpawnPoint { name: "monster", x: 20f32 + delta, y: 20f32 + delta });
+        entity_spawner.add_component(SelectionTree::new());
+        //entity_spawner.add_component(SelectionTree::new());
+        //entity_spawner.add_component(SelectionTree::new());
         entity_spawner.refresh();
         //break;
     }
