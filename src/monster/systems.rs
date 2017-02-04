@@ -96,6 +96,7 @@ use time::{PreciseTime, Duration};
 
 use WORLD_SPEED;
 
+use ::manager::components::Position;
 use ::monster::components::MonsterClass;
 use ::monster::components::MonsterAttributes;
 use ::monster::components::SelectionTree;
@@ -113,6 +114,8 @@ impl System for _PerceptionSystem {
 
     fn process_one(&mut self, _entity: &mut Entity) {
         // здесь тоже меняются события.
+
+        // сканируем вокруг, может есть еда или вода или др. монстр или ОБОРИГЕН!
     }
 }
 
@@ -177,7 +180,7 @@ pub struct BehaviorSystem {
 
 impl System for BehaviorSystem {
     fn aspect(&self) -> Aspect {
-        aspect_all!(MonsterClass, BehaviourState)
+        aspect_all!(MonsterClass, BehaviourState, Position)
     }
 
     fn process_one(&mut self, entity: &mut Entity) {
@@ -194,13 +197,35 @@ impl System for BehaviorSystem {
         //    8.  Проверка достижения цели.
         if self.behavior_time.to(PreciseTime::now()) > Duration::seconds(5 * WORLD_SPEED) {
             let behaviour_state = entity.get_component::<BehaviourState>(); // состояние
+            let mut position = entity.get_component::<Position>();
             match behaviour_state.state {
                 1 => {
-                    println!("...сплю zzz...");
+                    println!("...zzz...");
                 },
                 2 => {
                     // тут заставляем монстра ходить туда-сюда, бесцельно, куда подует)
-                    println!("...я хожу туда-сюда...");
+                    if position.x > (position.y * 2f32) && position.y < 139f32 {
+                        position.y += 1f32;
+                    } else if position.x < 139f32 {
+                        position.x += 1f32;
+                    }
+                    println!("x:{}, y:{}", position.x, position.y);
+                    /*  движение по овальной траектории.
+                        x = x_+x_radius*cos(r_ang+2);
+                        y = y_+y_radius*sin(r_ang);
+
+                        X1 = X + R * 0.5;
+		                Y1 = Y + 1.3 * R * 0.8;
+		                0.5 это синус 30
+		                0.8 это косинус 30
+		                R - хз. например 20 клеток.
+		                X, Y - это текущие координаты.
+		            */
+                    //                    let x1: f32 = position.x + 20f32 * 0.5;
+                    //                    let y1: f32 = position.y + 1.3f32 * 20f32 *0.8;
+                    //                    position.x = x1;
+                    //                    position.y = y1;
+                    //                    println!("x:{}, y:{}", position.x, position.y);
                 },
                 _ => {},
             }
@@ -220,7 +245,7 @@ pub struct EventSystem {
 
 impl System for EventSystem {
     fn aspect(&self) -> Aspect {
-        aspect_all!(BehaviourEvent, MonsterAttributes)
+        aspect_all!(MonsterAttributes, BehaviourEvent)
     }
 
     fn process_one(&mut self, entity: &mut Entity) {
@@ -233,23 +258,23 @@ impl System for EventSystem {
         //    6.  Нет событий.
         //    7.  Монстр насытился.
         //    8.  Монстр напился.
-        if self.event_time.to(PreciseTime::now()) > Duration::seconds(2 * WORLD_SPEED) {
+        if self.event_time.to(PreciseTime::now()) > Duration::seconds(WORLD_SPEED) {
             let mut behaviour_event = entity.get_component::<BehaviourEvent>(); // события
             let monster_attr = entity.get_component::<MonsterAttributes>(); // события
             if behaviour_event.event == 0 {
                 // проверяем ошибки/инициализация
                 behaviour_event.event = 6;
                 println!("ошибка/инициализация текущего события, теперь он {}", 6);
-            } else if self.event_last != behaviour_event.event {
-                if monster_attr.power < 950 {
-                    behaviour_event.event = 5;
-                    println!("...я устал, мне нужно поспать...");
-                }
-                if monster_attr.power > 990 {
-                    behaviour_event.event = 6;
-                    println!("...я свеж и полон сил!...");
-                }
+            } else if monster_attr.power < 960 && self.event_last != 5 {
+                behaviour_event.event = 5; // наступает событие - УСТАЛ
+                self.event_last = behaviour_event.event;
+                println!("Новое событие: монстр устал.");
+            } else if monster_attr.power > 990 && self.event_last != 6 {
+                behaviour_event.event = 6;
+                self.event_last = behaviour_event.event;
+                println!("Новое событие: монстр отдохнул.");
             }
+
 
             // фиксируем текущее время
             self.event_time = PreciseTime::now();

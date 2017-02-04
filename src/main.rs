@@ -19,7 +19,6 @@ mod server;
 mod manager;
 mod monster;
 
-#[allow(dead_code)]
 const SERVER_IP: &'static str = "192.168.0.131";
 //const  SERVER_IP: &'static str = "194.87.237.144";
 static WORLD_SPEED: i64 = 1;

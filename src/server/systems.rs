@@ -56,11 +56,11 @@ impl Component for ServerClass {}
 
 
 /// Система по обработке сети.
-pub struct _ServerSystem {
+pub struct ServerSystem {
     server_data: Server,
 }
-impl _ServerSystem {
-    pub fn _new() -> _ServerSystem {
+impl ServerSystem {
+    pub fn new() -> ServerSystem {
         let hostname: &str = SERVER_IP;
         let port: &str = "6658";
         let address = format!("{}:{}", hostname, port);
@@ -69,7 +69,7 @@ impl _ServerSystem {
         info!("Монстер-сервер запущен. Подключен к главному серверу.");
         println!("Монстер-сервер запущен. Подключен к главному серверу.");
 
-        _ServerSystem {
+        ServerSystem {
             server_data: Server {
                 stream: stream,
             },
@@ -80,7 +80,7 @@ impl _ServerSystem {
 // работа с сетью. обмен данными с главным сервером.
 
 
-impl System for _ServerSystem {
+impl System for ServerSystem {
     fn aspect(&self) -> Aspect {
         aspect_all!(ServerClass)
     }

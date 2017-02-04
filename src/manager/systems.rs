@@ -53,7 +53,7 @@ impl System for SpawnSystem {
                 entity_object.add_component(SelectionTree::new());
                 entity_object.add_component(BehaviourState { state: 0 });
                 entity_object.add_component(BehaviourEvent { event: 0 });
-                entity_object.add_component(MonsterAttributes { power: 1000, power_time: PreciseTime::now() });
+                entity_object.add_component(MonsterAttributes { power: 1000 });
                 entity_object.refresh();
                 let monster_id = entity_object.get_component::<MonsterId>();
                 println!("Создаем сущность {} {}", spawn_point.name.to_string(), monster_id.id);
@@ -68,22 +68,29 @@ impl System for SpawnSystem {
 
 /// Bio Systems, будем умершвлять тут монстра.
 // пересчет характеристик, значений жизнедеятельности монстра.
-pub struct BioSystems;
+pub struct BioSystems {
+    pub bios_time: PreciseTime,
+}
 
 impl System for BioSystems {
     fn aspect(&self) -> Aspect {
-        aspect_all!(MonsterAttributes)
+        aspect_all!(MonsterAttributes, BehaviourState)
     }
 
     fn process_one(&mut self, entity: &mut Entity) {
-        let mut monster_attr = entity.get_component::<MonsterAttributes>();
-        if monster_attr.power_time.to(PreciseTime::now()) > Duration::seconds(2 * WORLD_SPEED) {
+        if self.bios_time.to(PreciseTime::now()) > Duration::seconds(2 * WORLD_SPEED) {
+            let mut monster_attr = entity.get_component::<MonsterAttributes>();
+            let behaviour_state = entity.get_component::<BehaviourState>(); // состояние
             if monster_attr.power > 0 {
-                monster_attr.power -= 1;
+                if behaviour_state.state == 1 {
+                    monster_attr.power += 1;
+                } else {
+                    monster_attr.power -= 1;
+                }
                 println!("power {}", monster_attr.power);
             }
             // фиксируем текущее время
-            monster_attr.power_time = PreciseTime::now();
+            self.bios_time = PreciseTime::now();
         }
     }
 }

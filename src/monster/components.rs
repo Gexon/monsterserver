@@ -1,7 +1,6 @@
 // описание компонент монстра
 
 use tinyecs::*;
-use time::{PreciseTime};
 
 use ::utility::map::Map;
 
@@ -33,7 +32,6 @@ pub struct MonsterAttributes {
     //pub grow_state: i32,
     //pub reproduction_time: PreciseTime,
     //pub dead: i32,
-    pub power_time: PreciseTime,
     pub power: u32,
 }
 

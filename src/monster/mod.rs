@@ -26,7 +26,7 @@ pub fn init(monster_world: &mut World) {
         let entity_spawner = entity_manager.create_entity();
 
         let delta: f32 = count as f32;
-        entity_spawner.add_component(SpawnPoint { name: "monster", x: 20f32 + delta, y: 20f32 + delta });
+        entity_spawner.add_component(SpawnPoint { name: "monster", x: 1f32 + delta, y: 1f32 + delta });
         entity_spawner.refresh();
         //break;
     }
