@@ -10,6 +10,7 @@ dependencies = [
  "slog 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "slog-stdlog 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "slog-stream 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "tinyecs 0.0.5 (git+https://github.com/not-fl3/tinyecs.git?branch=WIP_macro_refactoring)",
 ]
 

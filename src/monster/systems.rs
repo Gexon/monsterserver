@@ -92,17 +92,21 @@ http://www.pvsm.ru/robototehnika/161885/print/
 */
 
 use tinyecs::*;
+use time::{PreciseTime, Duration};
+
+use WORLD_SPEED;
 
 use ::monster::components::MonsterClass;
+use ::monster::components::MonsterAttributes;
 use ::monster::components::SelectionTree;
 use ::monster::components::BehaviourEvent;
 use ::monster::components::BehaviourState;
 
 
-/// система восприятия
-pub struct PerceptionSystem;
+/// Система восприятия
+pub struct _PerceptionSystem;
 // тут типа чекает окружение, и помечает объекты что попадают в поле зения.
-impl System for PerceptionSystem {
+impl System for _PerceptionSystem {
     fn aspect(&self) -> Aspect {
         aspect_all!(MonsterClass)
     }
@@ -121,34 +125,44 @@ impl System for SelectorSystem {
         aspect_all!(MonsterClass, SelectionTree, BehaviourEvent, BehaviourState)
     }
 
+    //    fn process_no_entities(&mut self) {
+    //        println!("instaced buffer render system must work, but no entities!");
+    //    }
+    //    fn process_no_data(&mut self) {
+    //        println!("instaced buffer render system must work, but no data!");
+    //    }
+
     fn process_one(&mut self, entity: &mut Entity) {
-        let selection_tree = entity.get_component::<SelectionTree>();
-        let behaviour_state = entity.get_component::<BehaviourState>(); // состояние
+        let mut selection_tree = entity.get_component::<SelectionTree>();
+        let mut behaviour_state = entity.get_component::<BehaviourState>(); // состояние
         let behaviour_event = entity.get_component::<BehaviourEvent>(); // события
-        let mut state = behaviour_state.state;
-        let selector = &selection_tree.selector;
-        let mut curr_selector = selection_tree.curr_selector; // узел
-        let len = selector.len();
+
+        let len = selection_tree.selector.len();
         if len > 0 {
             // ткущий узел.
-            if curr_selector > -1i32 {
-                curr_selector = 0i32;
+            if selection_tree.curr_selector < 0i32 {
+                selection_tree.curr_selector = 0i32;
+                println!("ошибка/инициализация текущего указателя, теперь он {}", 0i32);
             } else {
                 /*event, state
-                let sel = vec![[6, 2], [2, 6]];*/
-                let index: usize = curr_selector as usize;
-                let curr_cell = selector[index]; //[6, 2]
+                let sel = vec![[6, 2], [5, 1]];*/
+                let index: usize = selection_tree.curr_selector as usize;
+                let curr_cell = selection_tree.selector[index]; //[6, 2]
                 let v_event = curr_cell[0];
                 let v_state = curr_cell[1];
                 // проверить нет ли ошибки в селекторе/программаторе. или первый запуск/инициализация.
-                let mut curr_event = behaviour_event.event; // считываем текущий событие/event
+                let curr_event = behaviour_event.event; // считываем текущий событие/event
                 if curr_event == v_event {
                     // меняем состояние, на соответствующее.
-                    state = v_state;
-                } else if curr_event == 0 { curr_event = 6 } // проверяем ошибки/инициализация
-                // сдвигаем curr_selector, переходим к сл. ячейке.
-                let shl: i32 = (len -1) as i32;
-                if curr_selector < shl { curr_selector += 1; } else { curr_selector = 0; }
+                    behaviour_state.state = v_state;
+                    println!("обнаружено событие {}", v_event);
+                    println!("переключаю состояние на {}", v_state);
+                    // сдвигаем curr_selector, переходим к сл. ячейке.
+                    let shl: i32 = (len - 1) as i32;
+                    if selection_tree.curr_selector < shl { selection_tree.curr_selector += 1; } else {
+                        selection_tree.curr_selector = 0;
+                    }
+                }
             }
         }
     }
@@ -157,26 +171,90 @@ impl System for SelectorSystem {
 /// Активатор. Приводит в действие.
 // считывает состояние и выполняет его, либо продолжает выполнение.
 // система поведения.
-pub struct BehaviorSystem {}
+pub struct BehaviorSystem {
+    pub behavior_time: PreciseTime,
+}
 
 impl System for BehaviorSystem {
     fn aspect(&self) -> Aspect {
-        aspect_all!(MonsterClass)
+        aspect_all!(MonsterClass, BehaviourState)
     }
 
-    fn process_one(&mut self, _entity: &mut Entity) {
+    fn process_one(&mut self, entity: &mut Entity) {
         // смотрит текущее состояние и выполняет действие.
+        // тут заставляем монстра ходить, пить, искать.
+        //    0.  Инициализация, ошибка.
+        //    1.  Сон. Монстр ждет, в этот момент с ним ничего не происходит.
+        //    2.  Бодрствование. Случайное перемещение по полигону.
+        //    3.  Поиск пищи.
+        //    4.  Поиск воды.
+        //    5.  Прием пищи.
+        //    6.  Прием воды.
+        //    7.  Перемещение к цели.
+        //    8.  Проверка достижения цели.
+        if self.behavior_time.to(PreciseTime::now()) > Duration::seconds(5 * WORLD_SPEED) {
+            let behaviour_state = entity.get_component::<BehaviourState>(); // состояние
+            match behaviour_state.state {
+                1 => {
+                    println!("...сплю zzz...");
+                },
+                2 => {
+                    // тут заставляем монстра ходить туда-сюда, бесцельно, куда подует)
+                    println!("...я хожу туда-сюда...");
+                },
+                _ => {},
+            }
+            // фиксируем текущее время
+            self.behavior_time = PreciseTime::now();
+        }
     }
 }
 
-/// Обработка событий
-// отлавливаем события и оповещаем об этом монстра.
-pub struct EventSystem {}
+/// Генерация событий
+// Создаем события, проверяем параметры.
+pub struct EventSystem {
+    pub event_time: PreciseTime,
+    pub event_last: u32,
+    // 0 - инициализация/ошибка
+}
 
 impl System for EventSystem {
     fn aspect(&self) -> Aspect {
-        aspect_all!(MonsterClass)
+        aspect_all!(BehaviourEvent, MonsterAttributes)
     }
 
-    fn process_one(&mut self, _entity: &mut Entity) {}
+    fn process_one(&mut self, entity: &mut Entity) {
+        //    0.  Инициализация, ошибка.
+        //    1.  Обнаружена еда.
+        //    2.  Обнаружена вода.
+        //    3.  Наступил голод.
+        //    4.  Наступила жажда.
+        //    5.  Утомился.
+        //    6.  Нет событий.
+        //    7.  Монстр насытился.
+        //    8.  Монстр напился.
+        if self.event_time.to(PreciseTime::now()) > Duration::seconds(2 * WORLD_SPEED) {
+            let mut behaviour_event = entity.get_component::<BehaviourEvent>(); // события
+            let monster_attr = entity.get_component::<MonsterAttributes>(); // события
+            if behaviour_event.event == 0 {
+                // проверяем ошибки/инициализация
+                behaviour_event.event = 6;
+                println!("ошибка/инициализация текущего события, теперь он {}", 6);
+            } else if self.event_last != behaviour_event.event {
+                if monster_attr.power < 950 {
+                    behaviour_event.event = 5;
+                    println!("...я устал, мне нужно поспать...");
+                }
+                if monster_attr.power > 990 {
+                    behaviour_event.event = 6;
+                    println!("...я свеж и полон сил!...");
+                }
+            }
+
+            // фиксируем текущее время
+            self.event_time = PreciseTime::now();
+        }
+    }
 }
+
+

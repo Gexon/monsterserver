@@ -1,6 +1,9 @@
 // системы менеджера
 
 use tinyecs::*;
+use time::{PreciseTime, Duration};
+
+use WORLD_SPEED;
 
 use ::manager::components::*;
 use ::monster::components::*;
@@ -47,6 +50,10 @@ impl System for SpawnSystem {
                 entity_object.add_component(MonsterClass);
                 entity_object.add_component(Modified); // произошли изменения монстра.
                 entity_object.add_component(MonsterId { id: last_id.monster_id });
+                entity_object.add_component(SelectionTree::new());
+                entity_object.add_component(BehaviourState { state: 0 });
+                entity_object.add_component(BehaviourEvent { event: 0 });
+                entity_object.add_component(MonsterAttributes { power: 1000, power_time: PreciseTime::now() });
                 entity_object.refresh();
                 let monster_id = entity_object.get_component::<MonsterId>();
                 println!("Создаем сущность {} {}", spawn_point.name.to_string(), monster_id.id);
@@ -55,6 +62,28 @@ impl System for SpawnSystem {
 
             entity.remove_component::<SpawnPoint>(); // удаляем компонент "Точка спавна/spawn_point"
             entity.delete();
+        }
+    }
+}
+
+/// Bio Systems, будем умершвлять тут монстра.
+// пересчет характеристик, значений жизнедеятельности монстра.
+pub struct BioSystems;
+
+impl System for BioSystems {
+    fn aspect(&self) -> Aspect {
+        aspect_all!(MonsterAttributes)
+    }
+
+    fn process_one(&mut self, entity: &mut Entity) {
+        let mut monster_attr = entity.get_component::<MonsterAttributes>();
+        if monster_attr.power_time.to(PreciseTime::now()) > Duration::seconds(2 * WORLD_SPEED) {
+            if monster_attr.power > 0 {
+                monster_attr.power -= 1;
+                println!("power {}", monster_attr.power);
+            }
+            // фиксируем текущее время
+            monster_attr.power_time = PreciseTime::now();
         }
     }
 }

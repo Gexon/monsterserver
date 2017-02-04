@@ -13,6 +13,7 @@ mod systems;
 pub fn init(monster_world: &mut World) {
     // добавляем систему спавна.
     monster_world.set_system(SpawnSystem);
+    monster_world.set_system(BioSystems);
 
     {
         // вносим в этот мир немного земли
